@@ -9,22 +9,50 @@
 body{font-family:Inter,system-ui,Arial; background:linear-gradient(180deg,#f8f2ff 0%, #f3e8ff 100%); color:var(--text); margin:0;}
 .app-root{min-height:100vh; display:flex; flex-direction:column; align-items:center;}
 .header{padding:48px 24px 12px; text-align:center}
-.header h1{margin:0; font-size:2.4rem; background:linear-gradient(90deg,var(--primary),var(--accent)); -webkit-background-clip:text; color:transparent}
+.header h1{margin:0; font-size:2.4rem; background:linear-gradient(90deg,var(--primary),var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent}
 .subtitle{color:rgba(45,12,87,0.8); margin-top:8px}
 .container{display:flex; gap:24px; width:100%; max-width:980px; padding:24px}
 .upload-card{flex:1}
 .extracted-card{flex:1; background:white; border-radius:12px; padding:18px; box-shadow:0 6px 18px rgba(45,12,87,0.06)}
 .extracted-card.empty{display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:160px}
-.upload-area{background:linear-gradient(180deg, rgba(139,92,246,0.06), rgba(236,72,153,0.03)); border:2px dashed rgba(45,12,87,0.08); border-radius:12px; padding:28px; text-align:center; cursor:pointer; transition:transform .18s ease}
+.upload-area{background:linear-gradient(180deg, rgba(139,92,246,0.06), rgba(236,72,153,0.03)); border:2px dashed rgba(45,12,87,0.08); border-radius:12px; padding:24px; text-align:center; cursor:pointer; transition:transform .18s ease}
 .upload-area:hover{transform:translateY(-4px)}
 .upload-inner .btn-primary{background:linear-gradient(90deg,var(--primary),var(--accent)); border:none; padding:10px 18px; color:white; border-radius:10px; cursor:pointer}
+.upload-inner{display:flex; align-items:center; gap:12px; justify-content:flex-start}
+.upload-hint{margin:0; color:rgba(45,12,87,0.6)}
 .file-row{margin-top:12px}
 .file-name{font-weight:600}
 .progress-bar{height:8px; background:#eee; border-radius:999px; margin-top:8px; overflow:hidden}
 .progress-bar .bar{height:100%; background:linear-gradient(90deg,var(--primary),var(--accent)); width:0}
-.row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #f1e8ff}
+.row{display:flex; gap:12px; padding:8px 0; border-bottom:1px dashed #f1e8ff; align-items:flex-start}
+.row strong{flex:0 0 40%; max-width:40%; font-weight:600; color:var(--text)}
+.row span{flex:1; text-align:right; color:rgba(45,12,87,0.9)}
 .footer{padding:18px; color:rgba(45,12,87,0.6)}
 
 @media(max-width:900px){
   .container{flex-direction:column}
+  .row{flex-direction:column}
+  .row strong{flex:0 0 auto; max-width:none}
+  .row span{flex:0 0 auto; text-align:left}
 }
+
+/* Preview styles for uploaded images */
+.preview-container{margin-top:12px; display:flex; align-items:center; gap:12px}
+.preview-img{max-width:100%; max-height:420px; width:auto; height:auto; border-radius:8px; object-fit:cover; box-shadow:0 6px 18px rgba(45,12,87,0.06); border:1px solid rgba(45,12,87,0.04)}
+
+/* Layout: make upload area and preview a single row on wide screens */
+.upload-top{display:flex; gap:16px; align-items:center; width:100%}
+.upload-card{display:flex; flex-direction:column; gap:12px}
+
+@media(min-width:900px){
+  /* Left and right columns (upload / extracted) should be 50/50 */
+  .upload-card, .extracted-card{flex:1 1 50%}
+
+  /* Inside upload-card, put upload area and preview side-by-side */
+  .upload-card{flex-direction:column}
+  .upload-top{flex-direction:row}
+  .upload-area{flex:1}
+  .preview-container{flex-basis:50%; display:flex; justify-content:center}
+  .preview-img{max-width:100%; max-height:420px}
+}
+

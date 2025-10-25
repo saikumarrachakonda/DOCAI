@@ -19,7 +19,7 @@ async function callClaude(base64Content) {
         contents: [{
           parts: [
             {
-              text: "Extract the following fields from this ID document:\n- Full Name\n- Date of Birth\n- ID Number\n- Expiry Date\n\nRespond in JSON format:\n{\n  \"name\": \"...\",\n  \"dob\": \"...\",\n  \"id_number\": \"...\",\n  \"expiry_date\": \"...\"\n}\n\nThe file is provided as base64 content (not necessary to decode); use it as context to extract text."
+              text: "Extract all identifiable fields present in this ID document (e.g., name, date of birth, ID number, expiry date, address, nationality, etc.) along with the document type (e.g., passport, driver’s license, national ID, etc.). Respond strictly in JSON format as follows:\n\n{\n  \"document_type\": \"...\",\n  \"fields\": {\n    \"field_name_1\": \"...\",\n    \"field_name_2\": \"...\",\n    \"field_name_3\": \"...\",\n    ...\n  }\n}\n\nThe file is provided as base64 content (not necessary to decode); use it as context to extract text."
             },
             {
               inlineData: {
@@ -39,21 +39,23 @@ async function callClaude(base64Content) {
         if (text) {
           const jsonMatch = text.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+            const parsed = JSON.parse(jsonMatch[0]);
+            // Ensure document_type and fields are present
+            if (parsed.document_type && parsed.fields && typeof parsed.fields === 'object') {
+              return parsed;
+            }
           }
         }
         console.warn('No valid JSON found in Gemini response');
       } catch (e) {
-        console.warn('Failed to parse Claude response:', e.message);
+        console.warn('Failed to parse Gemini response:', e.message);
       }
     }
 
     // Fallback with empty values if parsing fails
     return {
-      name: '',
-      dob: '',
-      id_number: '',
-      expiry_date: ''
+      document_type: '',
+      fields: {}
     };
   } catch (err) {
     console.error('Error calling Claude:', err.message || err);
@@ -69,19 +71,19 @@ exports.handleExtract = async (req, res) => {
     const fileBuffer = fs.readFileSync(filePath);
     const base64 = fileBuffer.toString('base64');
 
-    // Call Claude with the base64 content
-    const extracted = await callClaude(base64);
+  // Call Claude with the base64 content
+  const extracted = await callClaude(base64);
 
-    // Insert into DB
-    const insertText = `INSERT INTO identity_info(name, dob, id_number, expiry_date)
-                        VALUES($1,$2,$3,$4) RETURNING *`;
-    const values = [extracted.name || '', extracted.dob || '', extracted.id_number || '', extracted.expiry_date || ''];
+  // Insert into DB (store document_type and all fields as JSON)
+  const insertText = `INSERT INTO identity_info(document_type, fields)
+            VALUES($1, $2) RETURNING *`;
+  const values = [extracted.document_type || '', JSON.stringify(extracted.fields || {})];
 
-    const result = await db.query(insertText, values);
-    const saved = result.rows[0];
+  const result = await db.query(insertText, values);
+  const saved = result.rows[0];
 
-    // Return saved record
-    res.json({ ok: true, record: saved });
+  // Return saved record
+  res.json({ ok: true, record: saved });
   } catch (err) {
     console.error('extractController error:', err);
     res.status(500).json({ error: 'Extraction failed', details: err.message });
