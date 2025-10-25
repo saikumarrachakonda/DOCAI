@@ -15,7 +15,7 @@ export default function App() {
       </header>
 
       <main className="container">
-        <UploadSection onSuccess={(r: any) => { setRecord(r); toast.success('Extraction saved') }} onError={(e:string)=>{ toast.error(e) }} />
+        <UploadSection onSuccess={(r: any) => { setRecord(null); setRecord(r); toast.success('Extraction saved') }} onError={(e:string)=>{ toast.error(e) }} />
 
         <ExtractedInfo record={record} />
       </main>
