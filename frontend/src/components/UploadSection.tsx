@@ -6,6 +6,25 @@ type Props = {
   onError: (msg: string) => void
 }
 
+const FullScreenLoader = () => {
+  return (
+      <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+      }}>
+          Loading..
+      </div>
+  );
+};
+
 export default function UploadSection({ onSuccess, onError }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -37,40 +56,42 @@ export default function UploadSection({ onSuccess, onError }: Props) {
   function handleDragOver(e: React.DragEvent) { e.preventDefault(); }
 
   async function uploadFile(file: File) {
-    setFileName(file.name)
-    // create a local preview for images
-    if (file.type && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file)
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(url)
-    } else {
-      if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
-    }
-    setLoading(true)
-    setProgress(0)
-
-    const form = new FormData()
-    form.append('file', file)
-
-    try {
-      const res = await axios.post('/api/extract', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (ev) => {
-          if (ev.total) setProgress(Math.round((ev.loaded / ev.total) * 100))
+        setFileName(file.name)
+        // Reset previous extracted data
+        onSuccess(null);
+        // create a local preview for images
+        if (file.type && file.type.startsWith('image/')) {
+            const url = URL.createObjectURL(file)
+            if (previewUrl) URL.revokeObjectURL(previewUrl)
+            setPreviewUrl(url)
+        } else {
+            if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
         }
-      })
+        setLoading(true)
+        setProgress(0)
 
-      if (res.data && res.data.record) {
-        onSuccess(res.data.record)
-      } else {
-        onError('No record returned')
-      }
-    } catch (err: any) {
-      onError(err?.response?.data?.error || err.message || 'Upload failed')
-    } finally {
-      setLoading(false)
+        const form = new FormData()
+        form.append('file', file)
+
+        try {
+            const res = await axios.post('/api/extract', form, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (ev) => {
+                    if (ev.total) setProgress(Math.round((ev.loaded / ev.total) * 100))
+                }
+            })
+
+            if (res.data && res.data.record) {
+                onSuccess(res.data.record)
+            } else {
+                onError('No record returned')
+            }
+        } catch (err: any) {
+            onError(err?.response?.data?.error || err.message || 'Upload failed')
+        } finally {
+            setLoading(false)
+        }
     }
-  }
 
   return (
     <div className="upload-card">
@@ -98,6 +119,9 @@ export default function UploadSection({ onSuccess, onError }: Props) {
             <img src={previewUrl} alt="preview" className="preview-img" />
           </div>
         )}
+
+      { loading && <div className="loading-indicator">Loading...</div> }
+      {loading && <FullScreenLoader />}
     </div>
   )
 }
