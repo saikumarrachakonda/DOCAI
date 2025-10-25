@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import axios from 'axios'
 
 type Props = {
@@ -11,6 +11,7 @@ export default function UploadSection({ onSuccess, onError }: Props) {
   const [fileName, setFileName] = useState<string | null>(null)
   const [progress, setProgress] = useState<number>(0)
   const [loading, setLoading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   function handleBrowse() {
     inputRef.current?.click()
@@ -20,6 +21,12 @@ export default function UploadSection({ onSuccess, onError }: Props) {
     const file = e.target.files?.[0]
     if (file) uploadFile(file)
   }
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
@@ -31,6 +38,14 @@ export default function UploadSection({ onSuccess, onError }: Props) {
 
   async function uploadFile(file: File) {
     setFileName(file.name)
+    // create a local preview for images
+    if (file.type && file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file)
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(url)
+    } else {
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
+    }
     setLoading(true)
     setProgress(0)
 
@@ -59,13 +74,17 @@ export default function UploadSection({ onSuccess, onError }: Props) {
 
   return (
     <div className="upload-card">
-      <div className="upload-area" onDrop={handleDrop} onDragOver={handleDragOver}>
-        <input ref={inputRef} type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ display: 'none' }} />
-        <div className="upload-inner">
-          <button className="btn-primary" onClick={handleBrowse} aria-disabled={loading}>Browse Files</button>
-          <p>or drag & drop PDF / PNG / JPG here</p>
+      <div className="upload-top">
+        <div className="upload-area" onDrop={handleDrop} onDragOver={handleDragOver}>
+          <input ref={inputRef} type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ display: 'none' }} />
+          <div className="upload-inner">
+            <button className="btn-primary" onClick={handleBrowse} aria-disabled={loading}>Browse Files</button>
+            <p className="upload-hint">or drag & drop PDF / PNG / JPG here</p>
+          </div>
         </div>
-      </div>
+</div>
+        
+      
 
       {fileName && (
         <div className="file-row">
@@ -73,6 +92,12 @@ export default function UploadSection({ onSuccess, onError }: Props) {
           <div className="progress-bar"><div className="bar" style={{ width: `${progress}%` }} /></div>
         </div>
       )}
+
+      {previewUrl && (
+          <div className="preview-container">
+            <img src={previewUrl} alt="preview" className="preview-img" />
+          </div>
+        )}
     </div>
   )
 }
