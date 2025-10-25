@@ -1,0 +1,31 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env
+.env
+.env.*
+
+# Build outputs
+dist/
+build/
+/.vite
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VSCode
+/.vscode/
+
+# Backend/uploads (avoid pushing uploaded files)
+/backend/uploads/
+
+# Logs
+logs/
+*.log
+
+# TypeScript
+*.tsbuildinfo
