@@ -19,7 +19,7 @@ async function callClaude(base64Content) {
         contents: [{
           parts: [
             {
-              text: "Extract all identifiable fields present in this ID document (e.g., name, date of birth, ID number, expiry date, address, nationality, etc.) along with the document type (e.g., passport, driver’s license, national ID, etc.). Respond strictly in JSON format as follows:\n\n{\n  \"document_type\": \"...\",\n  \"fields\": {\n    \"field_name_1\": \"...\",\n    \"field_name_2\": \"...\",\n    \"field_name_3\": \"...\",\n    ...\n  }\n}\n\nThe file is provided as base64 content (not necessary to decode); use it as context to extract text."
+              text: `Extract all identifiable fields present in this ID document (e.g., name, date of birth, ID number, expiry date, address, nationality, etc.) along with the document type (e.g., passport, driver’s license, national ID, etc.). For each field, also provide the bounding box coordinates (left, top, width, height) as percentages of the image dimensions, representing where the field appears on the image.\n\nRespond strictly in JSON format as follows:\n\n{\n  \"document_type\": \"...\",\n  \"fields\": {\n    \"field_name_1\": { \"value\": \"...\", \"box\": { \"left\": 10, \"top\": 30, \"width\": 60, \"height\": 15 } },\n    \"field_name_2\": { \"value\": \"...\", \"box\": { \"left\": 20, \"top\": 40, \"width\": 30, \"height\": 10 } },\n    ...\n  }\n}\n\nThe file is provided as base64 content (not necessary to decode); use it as context to extract text and bounding boxes.`
             },
             {
               inlineData: {
@@ -33,7 +33,10 @@ async function callClaude(base64Content) {
       timeout: 120000
     });
 
-    if (res.data && res.data.candidates && res.data.candidates[0]?.content?.parts) {
+  // Log raw Gemini response for debugging
+  console.log('Gemini raw response:', JSON.stringify(res.data, null, 2));
+
+  if (res.data && res.data.candidates && res.data.candidates[0]?.content?.parts) {
       try {
         const text = res.data.candidates[0].content.parts[0]?.text;
         if (text) {
@@ -42,6 +45,14 @@ async function callClaude(base64Content) {
             const parsed = JSON.parse(jsonMatch[0]);
             // Ensure document_type and fields are present
             if (parsed.document_type && parsed.fields && typeof parsed.fields === 'object') {
+              // Validate/normalize fields: ensure each field has value and box
+              Object.keys(parsed.fields).forEach(key => {
+                const field = parsed.fields[key];
+                if (typeof field === 'string') {
+                  // If Gemini returns old format, convert to new
+                  parsed.fields[key] = { value: field, box: null };
+                }
+              });
               return parsed;
             }
           }
@@ -73,6 +84,7 @@ exports.handleExtract = async (req, res) => {
 
   // Call Claude with the base64 content
   const extracted = await callClaude(base64);
+  console.log('Parsed extracted from Gemini:', JSON.stringify(extracted, null, 2));
 
   // Insert into DB (store document_type and all fields as JSON)
   const insertText = `INSERT INTO identity_info(document_type, fields)
@@ -81,6 +93,7 @@ exports.handleExtract = async (req, res) => {
 
   const result = await db.query(insertText, values);
   const saved = result.rows[0];
+  console.log('Saved record to DB:', JSON.stringify(saved, null, 2));
 
   // Return saved record
   res.json({ ok: true, record: saved });
