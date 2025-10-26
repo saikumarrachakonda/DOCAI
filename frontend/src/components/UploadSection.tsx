@@ -2,7 +2,8 @@ import React, { useRef, useState, useEffect } from 'react'
 import axios from 'axios'
 
 type Props = {
-  onSuccess: (record: any) => void
+  // onSuccess now receives the extracted record and optional previewUrl
+  onSuccess: (record: any, previewUrl?: string | null) => void
   onError: (msg: string) => void
 }
 
@@ -59,21 +60,25 @@ export default function UploadSection({ onSuccess, onError }: Props) {
         setFileName(file.name)
         // Reset previous extracted data
         onSuccess(null);
-        // create a local preview for images
-        if (file.type && file.type.startsWith('image/')) {
-            const url = URL.createObjectURL(file)
-            if (previewUrl) URL.revokeObjectURL(previewUrl)
-            setPreviewUrl(url)
-        } else {
-            if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
-        }
+      // create a local preview for images
+      // Use a local variable so we can pass the preview URL immediately to parent
+      let localPreview: string | null = null;
+      if (file.type && file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file)
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(url)
+        localPreview = url
+      } else {
+        if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null) }
+        localPreview = null
+      }
         setLoading(true)
         setProgress(0)
 
         const form = new FormData()
         form.append('file', file)
 
-        try {
+    try {
             const res = await axios.post('/api/extract', form, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 onUploadProgress: (ev) => {
@@ -81,8 +86,9 @@ export default function UploadSection({ onSuccess, onError }: Props) {
                 }
             })
 
-            if (res.data && res.data.record) {
-                onSuccess(res.data.record)
+      if (res.data && res.data.record) {
+    // pass the local preview URL (not stale state) back to parent so App can display/highlight it
+    onSuccess(res.data.record, localPreview)
             } else {
                 onError('No record returned')
             }
@@ -114,11 +120,7 @@ export default function UploadSection({ onSuccess, onError }: Props) {
         </div>
       )}
 
-      {previewUrl && (
-          <div className="preview-container">
-            <img src={previewUrl} alt="preview" className="preview-img" />
-          </div>
-        )}
+    
 
       { loading && <div className="loading-indicator">Loading...</div> }
       {loading && <FullScreenLoader />}

@@ -1,6 +1,12 @@
-import React from 'react'
+import React from 'react';
 
-export default function ExtractedInfo({ record }: { record: any | null }) {
+interface ExtractedInfoProps {
+  record: any | null;
+  onFieldClick?: (field: string) => void;
+  selectedField?: string | null;
+}
+
+export default function ExtractedInfo({ record, onFieldClick, selectedField }: ExtractedInfoProps) {
   if (!record) return (
     <div className="extracted-card empty">
       <h3>Extracted Information</h3>
@@ -19,10 +25,30 @@ export default function ExtractedInfo({ record }: { record: any | null }) {
       {Object.keys(fields).length === 0 ? (
         <div className="row"><span className="muted">No fields extracted</span></div>
       ) : (
-        Object.entries(fields).map(([key, value]) => (
-          <div className="row" key={key}><strong>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</strong><span>{value || '-'}</span></div>
-        ))
+        Object.entries(fields).map(([key, fieldObj]) => {
+          const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          const isSelected = selectedField === key;
+          // If fieldObj is string (old format), fallback to string.
+          // Use a safe type check to avoid TS errors when accessing 'value'.
+          let value: any = null;
+          if (fieldObj && typeof fieldObj === 'object' && 'value' in (fieldObj as any)) {
+            value = (fieldObj as any).value;
+          } else {
+            value = fieldObj;
+          }
+          return (
+            <div
+              className={`row extracted-field${isSelected ? ' selected' : ''}`}
+              key={key}
+              style={{ cursor: onFieldClick ? 'pointer' : 'default', background: isSelected ? '#ffe0b2' : undefined }}
+              onClick={() => onFieldClick && onFieldClick(key)}
+            >
+              <strong>{displayKey}</strong>
+              <span>{String(value || '-')}</span>
+            </div>
+          );
+        })
       )}
     </div>
-  )
+  );
 }
